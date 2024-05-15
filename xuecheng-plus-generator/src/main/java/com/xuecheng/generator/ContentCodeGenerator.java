@@ -25,7 +25,7 @@ public class ContentCodeGenerator {
 	//生成的表
 	private static final String[] TABLE_NAMES = new String[]{
 //			"mq_message",
-//			"mq_message_history"
+//			"mq_message_history",
 			"course_base",
 			"course_market",
 			"course_teacher",
@@ -67,7 +67,7 @@ public class ContentCodeGenerator {
 		// 数据库配置
 		DataSourceConfig dsc = new DataSourceConfig();
 		dsc.setDbType(DbType.MYSQL);
-		dsc.setUrl("jdbc:mysql://192.168.101.65:3306/xc402_" + SERVICE_NAME
+		dsc.setUrl("jdbc:mysql://192.168.101.65:3306/xcplus_" + SERVICE_NAME
 				+ "?serverTimezone=UTC&useUnicode=true&useSSL=false&characterEncoding=utf8");
 //		dsc.setDriverName("com.mysql.jdbc.Driver");
 		dsc.setDriverName("com.mysql.cj.jdbc.Driver");

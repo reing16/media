@@ -67,6 +67,8 @@
 
         <logger name="org.dromara.hmily.bonuspoint" level="WARN">
         </logger>
+        <logger name="com.alibaba.nacos" level="WARN">
+        </logger>
 		
         <!--OFF   0-->
         <!--FATAL   100-->
