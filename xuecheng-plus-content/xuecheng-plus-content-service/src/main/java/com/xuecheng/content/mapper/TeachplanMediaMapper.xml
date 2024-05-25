@@ -19,10 +19,4 @@
         id, media_id, teachplan_id, course_id, media_fileName, create_date, create_people, change_people
     </sql>
 
-    <select id="selectByteachplanId" resultMap="BaseResultMap" parameterType="long">
-        select id,media_id,teachplan_id,course_id,media_fileName,create_date,create_people,change_people
-        from teachplan_media
-        where teachplan_id = #{value}
-
-    </select>
 </mapper>

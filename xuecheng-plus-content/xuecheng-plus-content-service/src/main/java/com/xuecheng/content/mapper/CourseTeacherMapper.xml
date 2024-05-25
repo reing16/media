@@ -18,10 +18,4 @@
         id, course_id, teacher_name, position, introduction, photograph, create_date
     </sql>
 
-    <select id="selectCourseById" resultType="com.xuecheng.content.model.po.CourseTeacher">
-        select id,course_id,teacher_name,position,introduction,photograph,create_date from course_teacher
-        where course_id=#{value}
-    </select>
-
-
 </mapper>

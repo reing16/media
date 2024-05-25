@@ -1,23 +1,14 @@
 package com.xuecheng.content.model.dto;
 
-import com.baomidou.mybatisplus.annotation.FieldFill;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.xuecheng.content.model.po.Teachplan;
-import com.xuecheng.content.model.po.TeachplanMedia;
 import lombok.Data;
-import lombok.ToString;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 /**
- * @description 保存课程计划dto，包括新增、修改
  * @author Mr.M
- * @date 2022/9/9 10:27
  * @version 1.0
+ * @description 新增大章节、小章节、修改章节信息
+ * @date 2023/2/14 14:54
  */
 @Data
-@ToString
 public class SaveTeachplanDto {
 
     /***
@@ -61,7 +52,4 @@ public class SaveTeachplanDto {
      * 是否支持试学或预览（试看）
      */
     private String isPreview;
-
-
-
 }

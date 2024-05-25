@@ -1,9 +1,7 @@
 package com.xuecheng.content.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.xuecheng.content.model.dto.CourseTeacherDto;
 import com.xuecheng.content.model.po.CourseTeacher;
-import org.apache.ibatis.annotations.Delete;
 
 /**
  * <p>
@@ -13,8 +11,5 @@ import org.apache.ibatis.annotations.Delete;
  * @author itcast
  */
 public interface CourseTeacherMapper extends BaseMapper<CourseTeacher> {
-
-    CourseTeacher selectCourseById(Long courseId);
-
 
 }

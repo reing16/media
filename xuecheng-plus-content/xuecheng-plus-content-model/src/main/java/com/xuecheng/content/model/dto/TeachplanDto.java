@@ -8,19 +8,17 @@ import lombok.ToString;
 import java.util.List;
 
 /**
- * @description 课程计划树型结构dto
  * @author Mr.M
- * @date 2022/9/9 10:27
  * @version 1.0
+ * @description 课程计划信息模型类
+ * @date 2023/2/14 11:23
  */
 @Data
 @ToString
 public class TeachplanDto extends Teachplan {
+  //与媒资管理的信息
+   private TeachplanMedia teachplanMedia;
 
-    //课程计划关联的媒资信息
-    TeachplanMedia teachplanMedia;
-
-    //子结点
-    List<TeachplanDto> teachPlanTreeNodes;
-
+  //小章节list
+   private List<TeachplanDto> teachPlanTreeNodes;
 }

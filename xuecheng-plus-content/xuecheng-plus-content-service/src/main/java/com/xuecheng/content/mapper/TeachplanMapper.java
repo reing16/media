@@ -3,7 +3,6 @@ package com.xuecheng.content.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.xuecheng.content.model.dto.TeachplanDto;
 import com.xuecheng.content.model.po.Teachplan;
-import org.apache.ibatis.annotations.Delete;
 
 import java.util.List;
 
@@ -15,16 +14,8 @@ import java.util.List;
  * @author itcast
  */
 public interface TeachplanMapper extends BaseMapper<Teachplan> {
-    /**
-     * @description 查询某课程的课程计划，组成树型结构
-     * @param courseId
-     * @return com.xuecheng.content.model.dto.TeachplanDto
-     * @author Mr.M
-     * @date 2022/9/9 11:10
-     */
-    public List<TeachplanDto> selectTreeNodes(long courseId);
-    public TeachplanDto selectTreeNodesById(long planId);
 
-    @Delete("delete from teachplan where course_id=#{courseId}")
-    void deleteByCourseId(Long courseId);
+    //课程计划查询
+    public List<TeachplanDto> selectTreeNodes(Long courseId);
+
 }

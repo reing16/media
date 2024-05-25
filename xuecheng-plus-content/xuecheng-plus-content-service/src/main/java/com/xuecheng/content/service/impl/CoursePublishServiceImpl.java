@@ -1,8 +1,10 @@
 package com.xuecheng.content.service.impl;
 
 import com.alibaba.fastjson.JSON;
-import com.xuecheng.base.execption.CommonError;
-import com.xuecheng.base.execption.XueChengPlusException;
+import com.xuecheng.base.exception.CommonError;
+import com.xuecheng.base.exception.XueChengPlusException;
+import com.xuecheng.content.config.MultipartSupportConfig;
+import com.xuecheng.content.feignclient.MediaServiceClient;
 import com.xuecheng.content.mapper.CourseBaseMapper;
 import com.xuecheng.content.mapper.CourseMarketMapper;
 import com.xuecheng.content.mapper.CoursePublishMapper;
@@ -10,7 +12,6 @@ import com.xuecheng.content.mapper.CoursePublishPreMapper;
 import com.xuecheng.content.model.dto.CourseBaseInfoDto;
 import com.xuecheng.content.model.dto.CoursePreviewDto;
 import com.xuecheng.content.model.dto.TeachplanDto;
-//import com.xuecheng.content.model.dto.TeachplanTreeDto;
 import com.xuecheng.content.model.po.CourseBase;
 import com.xuecheng.content.model.po.CourseMarket;
 import com.xuecheng.content.model.po.CoursePublish;
@@ -20,21 +21,32 @@ import com.xuecheng.content.service.CoursePublishService;
 import com.xuecheng.content.service.TeachplanService;
 import com.xuecheng.messagesdk.model.po.MqMessage;
 import com.xuecheng.messagesdk.service.MqMessageService;
+import freemarker.template.Configuration;
+import freemarker.template.Template;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.ui.freemarker.FreeMarkerTemplateUtils;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 
 /**
- * @description TODO
  * @author Mr.M
- * @date 2022/9/16 15:37
  * @version 1.0
+ * @description 课程发布相关接口实现
+ * @date 2023/2/21 10:04
  */
+@Slf4j
 @Service
 public class CoursePublishServiceImpl implements CoursePublishService {
 
@@ -43,90 +55,100 @@ public class CoursePublishServiceImpl implements CoursePublishService {
 
     @Autowired
     TeachplanService teachplanService;
-    @Autowired
-    CourseMarketMapper courseMarketMapper;
+
     @Autowired
     CourseBaseMapper courseBaseMapper;
-    @Autowired
+
+     @Autowired
+    CourseMarketMapper courseMarketMapper;
+
+     @Autowired
     CoursePublishPreMapper coursePublishPreMapper;
-    @Autowired
-    CoursePublishMapper coursePublishMapper;
-    @Autowired
+     @Autowired
+     CoursePublishMapper coursePublishMapper;
+
+     @Autowired
     MqMessageService mqMessageService;
+     @Autowired
+     MediaServiceClient mediaServiceClient;
+
 
 
     @Override
     public CoursePreviewDto getCoursePreviewInfo(Long courseId) {
-
-        //课程基本信息、营销信息
-        CourseBaseInfoDto courseBaseInfo = courseBaseInfoService.getCourseBaseInfo(courseId);
-
-        //课程计划信息
-        List<TeachplanDto> teachplanTree= teachplanService.findTeachplanTree(courseId);
-
         CoursePreviewDto coursePreviewDto = new CoursePreviewDto();
+        //课程基本信息,营销信息
+        CourseBaseInfoDto courseBaseInfo = courseBaseInfoService.getCourseBaseInfo(courseId);
         coursePreviewDto.setCourseBase(courseBaseInfo);
+        //课程计划信息
+        List<TeachplanDto> teachplanTree = teachplanService.findTeachplanTree(courseId);
         coursePreviewDto.setTeachplans(teachplanTree);
+
         return coursePreviewDto;
     }
 
+    @Transactional
     @Override
     public void commitAudit(Long companyId, Long courseId) {
-        //约束校验
-        CourseBase courseBase = courseBaseMapper.selectById(courseId);
-        //课程审核状态
-        String auditStatus = courseBase.getAuditStatus();
-        //当前审核状态为已提交不允许再次提交
-        if("202003".equals(auditStatus)){
-            XueChengPlusException.cast("当前为等待审核状态，审核完成可以再次提交。");
-        }
-        //本机构只允许提交本机构的课程
-        if(!courseBase.getCompanyId().equals(companyId)){
-            XueChengPlusException.cast("不允许提交其它机构的课程。");
-        }
 
-        //课程图片是否填写
-        if(StringUtils.isEmpty(courseBase.getPic())){
-            XueChengPlusException.cast("提交失败，请上传课程图片");
-        }
-
-        //添加课程预发布记录
-        CoursePublishPre coursePublishPre = new CoursePublishPre();
-        //课程基本信息加部分营销信息
         CourseBaseInfoDto courseBaseInfo = courseBaseInfoService.getCourseBaseInfo(courseId);
-        BeanUtils.copyProperties(courseBaseInfo,coursePublishPre);
-        //课程营销信息
-        CourseMarket courseMarket = courseMarketMapper.selectById(courseId);
-        //转为json
-        String courseMarketJson = JSON.toJSONString(courseMarket);
-        //将课程营销信息json数据放入课程预发布表
-        coursePublishPre.setMarket(courseMarketJson);
-
-        //查询课程计划信息
-        List<TeachplanDto> teachplanTree = teachplanService.findTeachplanTree(courseId);
-        if(teachplanTree.size()<=0){
-            XueChengPlusException.cast("提交失败，还没有添加课程计划");
+        if (courseBaseInfo == null) {
+            XueChengPlusException.cast("课程找不到");
         }
-        //转json
-        String teachplanTreeString = JSON.toJSONString(teachplanTree);
-        coursePublishPre.setTeachplan(teachplanTreeString);
+        //审核状态
+        String auditStatus = courseBaseInfo.getAuditStatus();
 
-        //设置预发布记录状态,已提交
-        coursePublishPre.setStatus("202003");
-        //教学机构id
+        //如果课程的审核状态为已提交则不允许提交
+        if(auditStatus.equals("202003")){
+            XueChengPlusException.cast("课程已提交请等待审核");
+        }
+        //本机构只能提交本机构的课程
+        //todo:本机构只能提交本机构的课程
+
+        //课程的图片、计划信息没有填写也不允许提交
+        String pic = courseBaseInfo.getPic();
+        if(StringUtils.isEmpty(pic)){
+            XueChengPlusException.cast("请求上传课程图片");
+        }
+        //查询课程计划
+        //课程计划信息
+        List<TeachplanDto> teachplanTree = teachplanService.findTeachplanTree(courseId);
+        if(teachplanTree == null || teachplanTree.size()==0){
+            XueChengPlusException.cast("请编写课程计划");
+        }
+
+        //查询到课程基本信息、营销信息、计划等信息插入到课程预发布表
+        CoursePublishPre coursePublishPre = new CoursePublishPre();
+        BeanUtils.copyProperties(courseBaseInfo,coursePublishPre);
+        //设置机构id
         coursePublishPre.setCompanyId(companyId);
+        //营销信息
+        CourseMarket courseMarket = courseMarketMapper.selectById(courseId);
+        //转json
+        String courseMarketJson = JSON.toJSONString(courseMarket);
+        coursePublishPre.setMarket(courseMarketJson);
+        //计划信息
+        //转json
+        String teachplanTreeJson = JSON.toJSONString(teachplanTree);
+        coursePublishPre.setTeachplan(teachplanTreeJson);
+        //状态为已提交
+        coursePublishPre.setStatus("202003");
         //提交时间
         coursePublishPre.setCreateDate(LocalDateTime.now());
-        CoursePublishPre coursePublishPreUpdate = coursePublishPreMapper.selectById(courseId);
-        if(coursePublishPreUpdate == null){
-            //添加课程预发布记录
+        //查询预发布表，如果有记录则更新，没有则插入
+        CoursePublishPre coursePublishPreObj = coursePublishPreMapper.selectById(courseId);
+        if(coursePublishPreObj==null){
+            //插入
             coursePublishPreMapper.insert(coursePublishPre);
-        }else{
+        }else {
+            //更新
             coursePublishPreMapper.updateById(coursePublishPre);
         }
 
-        //更新课程基本表的审核状态
-        courseBase.setAuditStatus("202003");
+        //更新课程基本信息表的审核状态为已提交
+        CourseBase courseBase = courseBaseMapper.selectById(courseId);
+        courseBase.setAuditStatus("202003");//审核状态为已提交
+
         courseBaseMapper.updateById(courseBase);
     }
 
@@ -134,82 +156,117 @@ public class CoursePublishServiceImpl implements CoursePublishService {
     @Override
     public void publish(Long companyId, Long courseId) {
 
-        //约束校验
-        //查询课程预发布表
+        //查询预发布表
         CoursePublishPre coursePublishPre = coursePublishPreMapper.selectById(courseId);
         if(coursePublishPre == null){
-            XueChengPlusException.cast("请先提交课程审核，审核通过才可以发布");
+            XueChengPlusException.cast("课程没有审核记录，无法发布");
         }
-        //本机构只允许提交本机构的课程
-        if(!coursePublishPre.getCompanyId().equals(companyId)){
-            XueChengPlusException.cast("不允许提交其它机构的课程。");
-        }
-
-
-        //课程审核状态
-        String auditStatus = coursePublishPre.getStatus();
-        //审核通过方可发布
-        if(!"202004".equals(auditStatus)){
-            XueChengPlusException.cast("操作失败，课程审核通过方可发布。");
+        //状态
+        String status = coursePublishPre.getStatus();
+        //课程如果没有审核通过不允许发布
+        if(!status.equals("202004")){
+            XueChengPlusException.cast("课程没有审核通过不允许发布");
         }
 
-        //保存课程发布信息
-        saveCoursePublish(courseId);
-
-        //保存消息表
-        saveCoursePublishMessage(courseId);
-
-        //删除课程预发布表对应记录
-        coursePublishPreMapper.deleteById(courseId);
-
-    }
-
-    /**
-     * @description 保存课程发布信息
-     * @param courseId  课程id
-     * @return void
-     * @author Mr.M
-     * @date 2022/9/20 16:32
-     */
-    private void saveCoursePublish(Long courseId){
-        //整合课程发布信息
-        //查询课程预发布表
-        CoursePublishPre coursePublishPre = coursePublishPreMapper.selectById(courseId);
-        if(coursePublishPre == null){
-            XueChengPlusException.cast("课程预发布数据为空");
-        }
-
+        //向课程发布表写入数据
         CoursePublish coursePublish = new CoursePublish();
-
-        //拷贝到课程发布对象
         BeanUtils.copyProperties(coursePublishPre,coursePublish);
-        coursePublish.setStatus("203002");
-        CoursePublish coursePublishUpdate = coursePublishMapper.selectById(courseId);
-        if(coursePublishUpdate == null){
+        //先查询课程发布，如果有则更新，没有再添加
+        CoursePublish coursePublishObj = coursePublishMapper.selectById(courseId);
+        if(coursePublishObj == null){
             coursePublishMapper.insert(coursePublish);
         }else{
             coursePublishMapper.updateById(coursePublish);
         }
-        //更新课程基本表的发布状态
-        CourseBase courseBase = courseBaseMapper.selectById(courseId);
-        courseBase.setStatus("203002");
-        courseBaseMapper.updateById(courseBase);
+
+        //向消息表写入数据
+//        mqMessageService.addMessage("course_publish",String.valueOf(courseId),null,null);
+        saveCoursePublishMessage(courseId);
+
+        //将预发布表数据删除
+        coursePublishPreMapper.deleteById(courseId);
+
+    }
+
+    @Override
+    public File generateCourseHtml(Long courseId) {
+
+        Configuration configuration = new Configuration(Configuration.getVersion());
+        //最终的静态文件
+        File htmlFile = null;
+        try {
+            //拿到classpath路径
+            String classpath = this.getClass().getResource("/").getPath();
+            //指定模板的目录
+            configuration.setDirectoryForTemplateLoading(new File(classpath+"/templates/"));
+            //指定编码
+            configuration.setDefaultEncoding("utf-8");
+
+            //得到模板
+            Template template = configuration.getTemplate("course_template.ftl");
+            //准备数据
+            CoursePreviewDto coursePreviewInfo = this.getCoursePreviewInfo(courseId);
+            HashMap<String, Object> map = new HashMap<>();
+            map.put("model",coursePreviewInfo);
+
+            //Template template 模板, Object model 数据
+            String html = FreeMarkerTemplateUtils.processTemplateIntoString(template, map);
+            //输入流
+            InputStream inputStream = IOUtils.toInputStream(html, "utf-8");
+            htmlFile = File.createTempFile("coursepublish",".html");
+            //输出文件
+            FileOutputStream outputStream = new FileOutputStream(htmlFile);
+            //使用流将html写入文件
+            IOUtils.copy(inputStream,outputStream);
+        }catch (Exception ex){
+            log.error("页面静态化出现问题,课程id:{}",courseId,ex);
+            ex.printStackTrace();
+        }
+
+        return htmlFile;
+    }
+
+    @Override
+    public void uploadCourseHtml(Long courseId, File file) {
+        try {
+            //将file转成MultipartFile
+            MultipartFile multipartFile = MultipartSupportConfig.getMultipartFile(file);
+            //远程调用得到返回值
+            String upload = mediaServiceClient.upload(multipartFile, "course/"+courseId+".html");
+            if(upload==null){
+                log.debug("远程调用走降级逻辑得到上传的结果为null,课程id:{}",courseId);
+                XueChengPlusException.cast("上传静态文件过程中存在异常");
+            }
+        }catch (Exception ex){
+            ex.printStackTrace();
+            XueChengPlusException.cast("上传静态文件过程中存在异常");
+        }
 
     }
 
     /**
-     * @description 保存消息表记录，稍后实现
+     * @description 保存消息表记录
      * @param courseId  课程id
      * @return void
      * @author Mr.M
      * @date 2022/9/20 16:32
      */
-    private void saveCoursePublishMessage(Long courseId){
-
+    private void saveCoursePublishMessage(Long courseId) {
         MqMessage mqMessage = mqMessageService.addMessage("course_publish", String.valueOf(courseId), null, null);
-        if(mqMessage==null){
+        if (mqMessage == null) {
             XueChengPlusException.cast(CommonError.UNKOWN_ERROR);
         }
 
     }
+
+    /**
+     * 根据课程 id查询课程发布信息
+     * @param courseId
+     * @return
+     */
+    public CoursePublish getCoursePublish(Long courseId){
+        CoursePublish coursePublish = coursePublishMapper.selectById(courseId);
+        return coursePublish ;
+    }
+
 }

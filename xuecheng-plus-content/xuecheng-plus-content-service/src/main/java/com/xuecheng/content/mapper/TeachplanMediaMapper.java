@@ -12,6 +12,4 @@ import com.xuecheng.content.model.po.TeachplanMedia;
  */
 public interface TeachplanMediaMapper extends BaseMapper<TeachplanMedia> {
 
-
-    TeachplanMedia selectByteachplanId(Long planId);
 }
