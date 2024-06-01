@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-ending:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -18,18 +18,17 @@ jobs:
         uses: actions/setup-java@v2
         with:
           java-version: '8'
-          distribution: 'adopt' # 可以根据你的需求选择合适的JDK分发版
-
-      - name: Set up Maven
-        uses: actions/setup-java@v2
-        with:
           distribution: 'adopt'
-          java-version: '8'
-          cache: 'maven'
+
+      - name: Build and install parent project
+        run: |
+          cd path/to/parent/project
+          mvn install
 
       - name: Build with Maven
-        working-directory: ./xuecheng-plus-checkcode
-        run: mvn clean package -DskipTests
+        run: |
+          cd xuecheng-plus-checkcode
+          mvn clean package -DskipTests
 
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.5.3
