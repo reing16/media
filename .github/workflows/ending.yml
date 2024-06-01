@@ -36,7 +36,7 @@ jobs:
 
       - name: Deploy to server
         run: |
-          scp target/xuecheng-plus-checkcode.jar user@${{ secrets.HOST }}:/home/user/xuecheng-plus-checkcode.jar
+          scp target/xuecheng-plus-checkcode.jar root@${{ secrets.HOST }}:/home/user/xuecheng-plus-checkcode.jar
           ssh root@${{ secrets.HOST }} << 'EOF'
             # 停止现有的服务
             docker stop xuecheng-plus-checkcode || true
