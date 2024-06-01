@@ -24,14 +24,30 @@ jobs:
           java-version: '8'
           cache: 'maven'
 
-      - name: 项目打包
-        run: mvn -B package
+      - name: npm build
+        run: npm run build
 
-      - name: 删除旧的jar包以及运行脚本
-        run: sshpass -p ${{secrets.REMOTE_PWD}} ssh -o StrictHostKeyChecking=no root@${{secrets.REMOTE_IP}} "cd /root/GitHub_Action && rm -rf ./*"
-
-      - name: 上传jar包和启动脚本到服务器中
-        run: sshpass -p ${{secrets.REMOTE_PWD}} scp -r -o StrictHostKeyChecking=no ./target/GitHub_Action-0.0.1-SNAPSHOT.jar ./run.sh root@${{secrets.REMOTE_IP}}:/root/GitHub_Action
-
-      - name: 启动项目
-        run: sshpass -p ${{secrets.REMOTE_PWD}} ssh -o StrictHostKeyChecking=no root@${{secrets.REMOTE_IP}} "cd /root/GitHub_Action && chmod +x run.sh && ./run.sh"
+     # 安装依赖
+      - name: npm install
+        run: npm install
+      # 打包
+      - name: npm build
+        run: npm run build
+      # 部署到服务器
+      - name: deploy
+        uses: easingthemes/ssh-deploy@v2.1.1
+        env:
+          # 本地.ssh文件下的私钥id_rsa，存在secrets的PRIVATE_KEY中
+          SSH_PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          # 复制操作的参数。"-avzr --delete"意味部署时清空服务器目标目录下的文件
+          ARGS: "-avzr --delete" 
+          # 源目录，相对于$GITHUB_WORKSPACE根目录的路径
+          SOURCE: "./public/"
+          # 服务器域名/IP
+          REMOTE_HOST: ${{ secrets.HOST }}
+          # 服务器默认用户名为root
+          REMOTE_USER: "root"
+          # 目标目录
+          TARGET: '/usr/local/xxx/dist'
+          # 排除目录
+          EXCLUDE: "/node_modules/"
