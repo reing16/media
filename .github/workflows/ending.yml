@@ -28,6 +28,7 @@ jobs:
           cache: 'maven'
 
       - name: Build with Maven
+        working-directory: ./xuecheng-plus-checkcode
         run: mvn clean package -DskipTests
 
       - name: Set up SSH
