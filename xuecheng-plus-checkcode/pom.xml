@@ -16,6 +16,7 @@
             <groupId>com.xuecheng</groupId>
             <artifactId>xuecheng-plus-base</artifactId>
             <version>0.0.1-SNAPSHOT</version>
+            <relativePath>../pom.xml</relativePath> <!-- 这行确保指向父 POM -->
         </dependency>
         <dependency>
             <groupId>com.alibaba.cloud</groupId>
