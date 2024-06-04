@@ -36,6 +36,10 @@ jobs:
         java-version: '8'
         distribution: 'temurin'
         cache: maven
+    - name: Install parent POM
+      run: mvn install -f xuecheng-plus-parent/pom.xml  # 安装父 POM 文件
+    - name: Install xuecheng-plus-base module
+      run: mvn install -f xuecheng-plus-base/pom.xml  # 安装xuecheng-plus-base模块
     - name: Build with Maven
       run: mvn -B clean package --file xuecheng-plus-checkcode/pom.xml
     - name: Build the Docker image
