@@ -32,7 +32,8 @@ public class CourseCategoryServiceImpl implements CourseCategoryService {
 
         //找到每个节点的子节点，最终封装成List<CourseCategoryTreeDto>
         //先将list转成map，key就是结点的id，value就是CourseCategoryTreeDto对象，目的就是为了方便从map获取结点,filter(item->!id.equals(item.getId()))把根结点排除
-        Map<String, CourseCategoryTreeDto> mapTemp = courseCategoryTreeDtos.stream().filter(item -> !id.equals(item.getId())).collect(Collectors.toMap(key -> key.getId(), value -> value, (key1, key2) -> key2));
+        Map<String, CourseCategoryTreeDto> mapTemp = courseCategoryTreeDtos.stream().filter(item -> !id.equals(item.getId()))
+                .collect(Collectors.toMap(key -> key.getId(), value -> value, (key1, key2) -> key2));
         //定义一个list作为最终返回的list
         List<CourseCategoryTreeDto> courseCategoryList = new ArrayList<>();
         //从头遍历 List<CourseCategoryTreeDto> ，一边遍历一边找子节点放在父节点的childrenTreeNodes
